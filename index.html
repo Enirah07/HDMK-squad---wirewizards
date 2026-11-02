@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reliable IoT Data Transmission | Network Failure & Recovery Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="tech-grid-bg"></div>
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <div class="dashboard-container">
+        <!-- TOP NAVIGATION & STATUS BAR -->
+        <header class="top-nav">
+            <div class="brand-group">
+                <div class="node-icon">
+                    <span class="icon-pulse"></span>
+                    ⚡
+                </div>
+                <div>
+                    <h1 class="main-title">RELIABLE IoT DATA TRANSMISSION</h1>
+                    <p class="subtitle">Fault-Tolerant ESP32 Flash Buffer & Automatic Reconnection Sync</p>
+                </div>
+            </div>
+
+            <div class="nav-controls">
+                <div class="status-pill" id="deviceStatusBadge">
+                    <span class="status-dot dot-offline" id="statusDot"></span>
+                    <span class="status-text" id="statusText">CHECKING...</span>
+                </div>
+
+                <div class="clock-display" id="clockDisplay">00:00:00 UTC</div>
+
+                <button class="btn btn-outline" id="btnRefresh" title="Force Refresh Telemetry">
+                    ↻ Refresh
+                </button>
+                <button class="btn btn-danger-outline" id="btnResetDb" title="Clear Database for Judges Demo">
+                    🗑 Reset Data
+                </button>
+            </div>
+        </header>
+
+        <!-- HACKATHON LIVE DEMO SIMULATION CONTROLLER -->
+        <section class="demo-controller-bar">
+            <div class="demo-title-group">
+                <span class="demo-pulse-icon">🎮</span>
+                <div>
+                    <h3 class="demo-heading">HACKATHON LIVE DEMO CONTROLLER</h3>
+                    <p class="demo-sub">Generate realistic varying telemetry, test network outage, trigger &gt;35°C alert, and verify LittleFS batch recovery</p>
+                </div>
+            </div>
+            <div class="demo-btn-group">
+                <button class="btn btn-primary" id="btnSimStart">▶ Start Live Stream</button>
+                <button class="btn btn-warning" id="btnSimDropNetwork">⚠️ Simulate Network Drop</button>
+                <button class="btn btn-alert" id="btnSimSpikeTemp">🔥 Spike Temp (&gt;35°C Alarm)</button>
+                <button class="btn btn-success" id="btnSimRecover">🔄 Reconnect &amp; Sync Batch</button>
+                <button class="btn btn-secondary" id="btnSimStop">⏹ Stop</button>
+            </div>
+        </section>
+
+        <!-- CRITICAL METRIC CARDS ROW -->
+        <section class="metrics-grid">
+            <!-- Temperature Card -->
+            <div class="metric-card" id="cardTemp">
+                <div class="metric-header">
+                    <span class="metric-label">CURRENT TEMPERATURE</span>
+                    <span class="metric-badge" id="tempBadge">NORMAL</span>
+                </div>
+                <div class="metric-value-row">
+                    <span class="metric-value" id="valTemperature">--.-</span>
+                    <span class="metric-unit">°C</span>
+                </div>
+                <div class="metric-footer">
+                    <span>Threshold: <strong class="alert-threshold-text">35.0°C</strong></span>
+                    <span id="tempMinMax">Min: -- / Max: --</span>
+                </div>
+            </div>
+
+            <!-- Humidity Card -->
+            <div class="metric-card" id="cardHum">
+                <div class="metric-header">
+                    <span class="metric-label">CURRENT HUMIDITY</span>
+                    <span class="metric-badge badge-blue">DHT22</span>
+                </div>
+                <div class="metric-value-row">
+                    <span class="metric-value" id="valHumidity">--.-</span>
+                    <span class="metric-unit">% RH</span>
+                </div>
+                <div class="metric-footer">
+                    <span>Target Range: 40% - 70%</span>
+                    <span id="humMinMax">Min: -- / Max: --</span>
+                </div>
+            </div>
+
+            <!-- Offline LittleFS Recovered Counter Card -->
+            <div class="metric-card highlight-card" id="cardRecovered">
+                <div class="metric-header">
+                    <span class="metric-label">OFFLINE RECOVERED RECORDS</span>
+                    <span class="metric-badge badge-purple" id="recoveredBadge">FLASH SYNC</span>
+                </div>
+                <div class="metric-value-row">
+                    <span class="metric-value" id="valRecoveredCount">0</span>
+                    <span class="metric-unit">Saved</span>
+                </div>
+                <div class="metric-footer">
+                    <span>Total SQLite Ingested: <strong id="valTotalRecords">0</strong></span>
+                    <span class="sync-status-active">100% Integrity</span>
+                </div>
+            </div>
+
+            <!-- Local Buzzer State Card -->
+            <div class="metric-card" id="cardBuzzer">
+                <div class="metric-header">
+                    <span class="metric-label">LOCAL BUZZER ALERT</span>
+                    <span class="metric-badge badge-dim" id="buzzerStatePill">OFF</span>
+                </div>
+                <div class="buzzer-display">
+                    <div class="buzzer-visual" id="buzzerVisual">
+                        <span class="buzzer-wave wave-1"></span>
+                        <span class="buzzer-wave wave-2"></span>
+                        <span class="buzzer-wave wave-3"></span>
+                        <div class="buzzer-speaker">🔊</div>
+                    </div>
+                    <div class="buzzer-info">
+                        <div class="buzzer-status-title" id="buzzerStatusTitle">QUIET (ONLINE)</div>
+                        <div class="buzzer-policy-note">Threshold check only runs when network fails</div>
+                    </div>
+                </div>
+                <div class="metric-footer">
+                    <span>Trigger: &gt; 35°C during OFFLINE</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SYSTEM OPERATIONAL ARCHITECTURE BANNER -->
+        <section class="banner-status-flow">
+            <div class="flow-step" id="stepOnline">
+                <div class="step-num">01</div>
+                <div class="step-content">
+                    <h4>ONLINE STREAMING</h4>
+                    <p>Live DHT22 data streamed directly to Flask API every 10s. Buzzer forced OFF.</p>
+                </div>
+            </div>
+            <div class="flow-arrow">➔</div>
+            <div class="flow-step" id="stepOffline">
+                <div class="step-num">02</div>
+                <div class="step-content">
+                    <h4>NETWORK OUTAGE BUFFER</h4>
+                    <p>Wi-Fi / server drops. Sensor data buffered to LittleFS flash. Buzzer sounds if temp &gt; 35°C.</p>
+                </div>
+            </div>
+            <div class="flow-arrow">➔</div>
+            <div class="flow-step" id="stepSync">
+                <div class="step-num">03</div>
+                <div class="step-content">
+                    <h4>AUTOMATIC RECOVERY</h4>
+                    <p>Connection restores. Buzzer silences instantly. Stored flash records batch-sync with zero loss.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- REAL-TIME GRAPHS SECTION -->
+        <section class="charts-section">
+            <div class="chart-box">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="chart-title">Temperature Telemetry & Alert Boundary</h3>
+                        <p class="chart-subtitle">Demonstration Alert Threshold at 35°C (Active Only During Network Failure)</p>
+                    </div>
+                    <div class="legend-pills">
+                        <span class="legend-pill pill-live">● Live Streamed</span>
+                        <span class="legend-pill pill-recovered">◆ LittleFS Recovered</span>
+                        <span class="legend-pill pill-threshold">--- 35°C Limit</span>
+                    </div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="chart-title">Relative Humidity Telemetry</h3>
+                        <p class="chart-subtitle">Continuous AM2302 (DHT22) Capacitive Sensor Readings</p>
+                    </div>
+                    <div class="legend-pills">
+                        <span class="legend-pill pill-hum">● Humidity %</span>
+                    </div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="humChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- DATA TABLES & EVENT AUDIT TRAIL -->
+        <section class="tables-section">
+            <!-- Recovered LittleFS Readings Inspector -->
+            <div class="panel-box">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <span class="panel-badge-icon">💾</span>
+                        <h3>LittleFS Recovered Records Archive</h3>
+                    </div>
+                    <div class="panel-actions">
+                        <span class="record-counter-pill" id="tableRecordCount">0 Records</span>
+                        <button class="btn btn-sm btn-outline" id="btnExportCsv">📥 Export CSV</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="tech-table" id="recoveredTable">
+                        <thead>
+                            <tr>
+                                <th>Record ID</th>
+                                <th>Original ESP32 Timestamp</th>
+                                <th>Temperature</th>
+                                <th>Humidity</th>
+                                <th>Server Ingest Time</th>
+                                <th>Source Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recoveredTableBody">
+                            <tr>
+                                <td colspan="6" class="empty-state">No offline recovered records yet. Unplug ESP32 Wi-Fi to test offline buffering!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Network Events & Outage Log -->
+            <div class="panel-box">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <span class="panel-badge-icon">📡</span>
+                        <h3>Network Outage & Recovery Event Audit</h3>
+                    </div>
+                    <span class="live-dot-indicator">LIVE MONITOR</span>
+                </div>
+                <div class="event-feed" id="eventFeed">
+                    <div class="event-item event-info">
+                        <span class="event-time">--:--:--</span>
+                        <span class="event-desc">System initialized. Awaiting ESP32 connection...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER & JUDGING SUMMARY -->
+        <footer class="footer">
+            <div class="footer-col">
+                <strong>Project:</strong> Reliable IoT Data Transmission During Network Failure
+            </div>
+            <div class="footer-col">
+                <strong>Hardware:</strong> ESP32 DevKit V1 + DHT22 + Active Buzzer (LittleFS Non-Volatile Flash)
+            </div>
+            <div class="footer-col">
+                <strong>Backend:</strong> Python Flask + SQLite + Vanilla JS + Chart.js
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
